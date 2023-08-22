@@ -1,0 +1,10 @@
+package symbol;
+
+public class Error {
+
+    private static int errorNum = 0;
+    
+    public static void errorOccurred(){errorNum++;}    
+    public int getError(){return errorNum;}
+    
+}

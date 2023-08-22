@@ -1,0 +1,19 @@
+package symbol;
+
+public class Params {
+
+	private String paramType;
+	private String paramName;
+	
+	public Params(String paramName, String paramType){
+		setParamName(paramName);
+		setParamType(paramType);
+	}
+	
+	public void setParamType(String paramType){this.paramType = paramType;}
+	public void setParamName(String paramName){this.paramName = paramName;}
+	
+	public String getParamType(){return paramType;}
+	public String getParamName(){return paramName;}
+	
+}

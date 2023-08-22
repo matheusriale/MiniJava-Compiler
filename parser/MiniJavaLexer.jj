@@ -1,0 +1,334 @@
+options {
+  JAVA_UNICODE_ESCAPE = true;
+  LOOKAHEAD = 5;
+}
+
+PARSER_BEGIN(MiniJavaParser)
+import syntaxtree.*;
+import visitor.*;
+public class MiniJavaParser {}
+PARSER_END(MiniJavaParser)
+
+/* The regular expressions here will be skipped during lexical analysis: */
+SKIP :
+{
+" "
+| "\r"
+| "\t"
+| "\n"
+}
+
+SKIP : 
+{
+"/*" : MLComment
+}
+
+<MLComment> SKIP:
+{
+  "*/" : DEFAULT
+  | < ~[] >
+}
+
+SKIP: {
+  "//" : SLComment
+}
+
+<SLComment> SKIP:
+{
+  <["\n","\r"]> : DEFAULT
+  | < ~[] >
+}
+
+TOKEN : 
+{ < LPAR: "(" >
+| < RPAR: ")" >
+| < EXCLAMATION: "!" >
+| < NEW: "new" >
+| < INT: "int" >
+| < LBRACKET: "[" >
+| < RBRACKET: "]" >
+| < THIS: "this" >
+| < FALSE: "false" >
+| < TRUE: "true" >
+| < INTEGER_LITERAL: (["0"-"9"])+ >
+| < DOT: "." >
+| < COMMA: "," >
+| < LENGTH: "length" >
+| < AND: "&&" >
+| < LESS_THAN: "<" >
+| < PLUS: "+" >
+| < MINUS: "-" >
+| < LCURL: "{" >
+| < RCURL: "}" >
+| < STAR: "*">
+| < RETURN: "return" >
+| < SEMICOLON: ";" >
+| < IF: "if" >
+| < ELSE: "else" >
+| < WHILE: "while" >
+| < SYSOUT: "System.out.println" >
+| < ASSIGN: "=" >
+| < BOOLEAN: "boolean" >
+| < PUBLIC: "public" >
+| < CLASS: "class" >
+| < EXTENDS: "extends" >
+| < STATIC: "static" >
+| < VOID: "void" >
+| < MAIN: "main" >
+| < STRING: "String" >
+| < IDENTIFIER: (["a"-"z"]|["A"-"Z"])(["a"-"z"]|["A"-"Z"]|["0"-"9"]|"_")* >
+}
+
+Program Goal() :
+{
+  MainClass mc;
+  ClassDecl cd;
+  ClassDeclList cdl = new ClassDeclList();
+}
+{
+  mc = MainClass() (cd = ClassDeclaration() {cdl.addElement(cd);})* <EOF>
+  {return new Program(mc, cdl);}
+}
+
+MainClass MainClass() :
+{
+	Identifier i1, i2;
+	Statement s;
+}
+{
+  <CLASS> i1 = Identifier() <LCURL> <PUBLIC> <STATIC> <VOID> <MAIN> <LPAR> <STRING> <LBRACKET> <RBRACKET> i2 = Identifier() <RPAR> <LCURL> s = Stm() <RCURL> <RCURL>
+  {return new MainClass(i1,i2,s);}
+}
+
+ClassDecl ClassDeclaration() :
+{
+	Identifier i1,i2;
+	VarDecl vd;
+	MethodDecl md;
+	VarDeclList vdl = new VarDeclList();
+	MethodDeclList mdl = new MethodDeclList();
+	
+}
+{
+  <CLASS> i1 = Identifier() <EXTENDS> i2 = Identifier() <LCURL> (vd = VarDeclaration(){vdl.addElement(vd);})* (md = MethodDeclaration(){mdl.addElement(md);})* <RCURL>
+  {return new ClassDeclExtends(i1,i2,vdl,mdl);}
+|
+  <CLASS> i1 = Identifier()  <LCURL> (vd = VarDeclaration() {vdl.addElement(vd);})* (md = MethodDeclaration() {mdl.addElement(md);})* <RCURL>
+  {return new ClassDeclSimple(i1,vdl,mdl);}
+}
+
+VarDecl VarDeclaration() :
+{
+	Identifier i;
+	Type t;
+}
+{
+  t = Type() i = Identifier() <SEMICOLON>
+  {return new VarDecl(t,i);}
+}
+
+MethodDecl MethodDeclaration() :
+{
+  Formal f;
+  Type t, t1;
+  VarDecl vd;
+  Statement s;
+  Identifier i, i1;
+  FormalList fl = new FormalList();
+  VarDeclList vdl = new VarDeclList();
+  StatementList sl = new StatementList();
+  Exp e;
+}
+{
+  <PUBLIC> t=Type() i=Identifier() <LPAR> 
+  (
+   <RPAR> <LCURL> (vd = VarDeclaration() {vdl.addElement(vd);})* (s = Stm() {sl.addElement(s);})* <RETURN> e=Expression() <SEMICOLON> <RCURL>
+  {return new MethodDecl(t, i, fl, vdl, sl, e);}
+  | t1 = Type() i1 = Identifier() {f = new Formal(t1, i1);} {fl.addElement(f);} (<COMMA> t1 = Type() i1 = Identifier() {f = new Formal(t1, i1);} {fl.addElement(f);})* <RPAR> <LCURL> (vd = VarDeclaration() {vdl.addElement(vd);})* (s = Stm() {sl.addElement(s);})* <RETURN> e=Expression() <SEMICOLON> <RCURL>
+  {return new MethodDecl(t, i, fl, vdl, sl, e);}
+  )
+}
+
+Type Type() :
+{
+	Identifier i;
+}
+{
+  <INT> <LBRACKET> <RBRACKET> 
+  {return new IntArrayType();}
+  | <BOOLEAN>  
+  {return new BooleanType();}
+  | <INT> 
+  {return new IntegerType();}
+  | i = Identifier() 
+  {return new IdentifierType(i.toString());}
+}
+
+Statement Stm() :
+{
+  StatementList sl = new StatementList();
+  Statement s1, s2;
+  Identifier i ;
+  Exp e1, e2;
+}
+{
+  <LCURL> (s1 = Stm() {sl.addElement(s1);})* <RCURL>
+    {return new Block(sl);}
+  | <IF> <LPAR> e1 = Expression() <RPAR> s1 = Stm() <ELSE> s2 = Stm()
+    {return new If(e1, s1, s2);}
+  | <WHILE> <LPAR> e1 = Expression() <RPAR> s1 = Stm()
+    {return new While(e1, s1);}
+  | <SYSOUT> <LPAR> e1 = Expression() <RPAR> <SEMICOLON>
+    {return new Print(e1);}
+  | i = Identifier() <ASSIGN> e1 = Expression() <SEMICOLON>
+    {return new Assign(i, e1);}
+  | i = Identifier() <LBRACKET> e1 = Expression() <RBRACKET> <ASSIGN> e2 = Expression() <SEMICOLON>
+    {return new ArrayAssign(i, e1, e2);}
+}
+
+Exp Expression() :
+{
+  Exp e, e1, e2;
+  Token t;
+  Identifier i;
+}
+{ t = <INTEGER_LITERAL> {e1 = new IntegerLiteral(Integer.parseInt(t.toString()));} e2 = Expressionprime(e1)
+  {return e2;}
+| <TRUE> {e1 = new True();} e2 = Expressionprime(e1)
+  {return e2;}
+| <FALSE> {e1 = new False();} e2 = Expressionprime(e1) 
+  {return e2;}
+| i = Identifier() {e1 = new IdentifierExp(i.toString());} e2 =  Expressionprime(e1)
+  {return e2;}
+| <THIS> {e1 = new This();} e2 = Expressionprime(e1)
+  {return e2;}
+| <NEW> <INT> <LBRACKET> e = Expression() {e1 = new NewArray(e);} <RBRACKET> e2 = Expressionprime(e1)
+  {return e2;}
+| <NEW> i = Identifier() {e1 = new NewObject(i);} <LPAR> <RPAR> e2 = Expressionprime(e1)
+  {return e2;}
+| <EXCLAMATION> e = Expression() {e1 = new Not(e);} e2 = Expressionprime(e1)
+  {return e2;}
+| <LPAR> e1 = Expression() <RPAR> e2 = Expressionprime(e1)
+  {return e2;}
+}
+
+Exp Expressionprime(Exp e) :
+{
+  Identifier i;
+  Exp ef, ef1, e1, e2;
+  ExpList el = new ExpList();
+}
+{
+  (
+    <AND> e1 = Expression() {ef = new And(e, e1);} ef1 = Expressionprime(ef)
+    {return ef1;}
+    | <LESS_THAN> e1 = Expression() {ef = new LessThan(e, e1);} ef1 = Expressionprime(ef)
+    {return ef1;}
+    | <PLUS> e1 = Expression() {ef = new Plus(e, e1);} ef1 = Expressionprime(ef)
+    {return ef1;}
+    | <MINUS> e1 = Expression() {ef = new Minus(e, e1);} ef1 = Expressionprime(ef)
+    {return ef1;}
+    | <STAR> e1 = Expression() {ef = new Times(e, e1);} ef1 = Expressionprime(ef)
+    {return ef1;}
+  )
+  | <LBRACKET> e1 = Expression() <RBRACKET> {ef = new ArrayLookup(e, e1);} ef1 = Expressionprime(ef)
+    {return ef1;}
+  | <DOT> <LENGTH> {e1 = new ArrayLength(e);} ef1 = Expressionprime(e1)
+    {return ef1;}
+  | 
+  (
+    <DOT> i = Identifier() <LPAR> (e1 = Expression() {el.addElement(e1);} (<COMMA> e2 = Expression() {el.addElement(e2);})*)? <RPAR> {e1 = new Call(e, i, el);} ef = Expressionprime(e1)
+    {return ef;}
+    |<DOT> i = Identifier() <LPAR> <RPAR> {e1 = new Call(e, i, el);} ef1 = Expressionprime(e1)
+    {return ef1;}
+  )
+  | {return e;}
+}
+
+Identifier Identifier() :
+{Token t;}
+{
+  t = <IDENTIFIER>
+  {return new Identifier(t.toString());}
+}
+
+Token Token():
+{
+  Token t;
+}
+{
+  t = <LPAR>
+  {return t;}
+| t = <RPAR>
+  {return t;}
+| t = <EXCLAMATION>
+  {return t;}
+| t = <NEW>
+  {return t;}
+| t = <INT>
+  {return t;}
+| t = <LBRACKET>
+  {return t;}
+| t = <RBRACKET>
+  {return t;}
+| t = <THIS>
+  {return t;}
+| t = <FALSE>
+  {return t;}
+| t = <TRUE>
+  {return t;}
+| t = <INTEGER_LITERAL>
+  {return t;}
+| t = <DOT>
+  {return t;}
+| t = <COMMA>
+  {return t;}
+| t = <LENGTH>
+  {return t;}
+| t = <AND>
+  {return t;}
+| t = <LESS_THAN>
+  {return t;}
+| t = <PLUS>
+  {return t;}
+| t = <MINUS>
+  {return t;}
+| t = <LCURL>
+  {return t;}
+| t = <RCURL>
+  {return t;}
+| t = <STAR>
+  {return t;}
+| t = <RETURN>
+  {return t;}
+| t = <SEMICOLON>
+  {return t;}
+| t = <IF>
+  {return t;}
+| t = <ELSE>
+  {return t;}
+| t = <WHILE>
+  {return t;}
+| t = <SYSOUT>
+  {return t;}
+| t = <ASSIGN>
+  {return t;}
+| t = <BOOLEAN>
+  {return t;}
+| t = <PUBLIC>
+  {return t;}
+| t = <CLASS>
+  {return t;}
+| t = <EXTENDS>
+  {return t;}
+| t = <STATIC>
+  {return t;}
+| t = <VOID>
+  {return t;}
+| t = <MAIN>
+  {return t;}
+| t = <STRING>
+  {return t;}
+| t = <IDENTIFIER>
+  {return t;}
+}

@@ -1,0 +1,103 @@
+package symbol;
+import java.util.*;
+
+public class Method extends Table {
+
+	private Params attr;
+    private List<Params> methodParams;
+    private List<Params> methodLocals;
+    private Stack<Params> history;
+    private Stack<Params> pastDecl;
+    
+    public Method(String methodName, String methodType){
+    	this.attr = new Params(methodName, methodType);
+    	methodParams = new ArrayList<Params>();
+    	methodLocals = new ArrayList<Params>();
+    	history = new Stack<Params>();
+    	pastDecl = new Stack<Params>();
+    }    
+    
+    public void putMethodParams(Params methodParam){
+    	boolean alreadyInList = false;
+		
+		for(Iterator<Params> it = methodParams.iterator(); it.hasNext();){
+			Params itMethodParams = it.next();
+			if(itMethodParams.getParamName() == methodParam.getParamName())
+				alreadyInList = true;
+		}
+		if(!alreadyInList)
+			methodParams.add(methodParam);		
+		else {
+			Error.errorOccurred();
+			System.out.printf("Método já contem o parametro %s do tipo %s", 
+					methodParam.getParamName(), methodParam.getParamType());
+		}
+    }
+    
+	public void putMethodLocals(Params methodLocal){
+		boolean alreadyInList = false;	
+		
+		for(Iterator<Params> it = methodParams.iterator(); it.hasNext();){	
+			Params itMethodParams = it.next();
+			if(itMethodParams.getParamName() == methodLocal.getParamName())
+				alreadyInList = true;		
+		}
+		
+		for(Iterator<Params> it2 = methodLocals.iterator(); it2.hasNext();){	
+			Params itMethodLocals = it2.next();
+			if(itMethodLocals.getParamName() == methodLocal.getParamName())
+				alreadyInList = true;	
+		}
+		
+		if(!alreadyInList)
+			methodLocals.add(methodLocal);		
+		else {
+			Error.errorOccurred();
+			System.out.printf("Método já contem a variavel %s do tipo %s", 
+					methodLocal.getParamName(), methodLocal.getParamType());
+		}
+	}
+	
+	public Params getAttr(){return attr;}
+	
+	public List<Params> getMethodParams(){return methodParams;}
+	
+	public List<Params> getMethodLocals(){return methodLocals;}
+	
+	public void beginScope(){
+		for(Iterator<Params> it = methodParams.iterator();it.hasNext();){
+			Params itMethodParams = it.next();
+			String temp = varHash.put(Symbol.symbol(itMethodParams.getParamName()), 
+													itMethodParams.getParamType());
+			history.push(new Params(itMethodParams.getParamName(), itMethodParams.getParamType()));			
+			if(temp != null)
+				pastDecl.push(new Params(itMethodParams.getParamName(), temp));
+		}
+		
+		for(Iterator<Params> it = methodLocals.iterator();it.hasNext();){
+			Params itMethodLocals = it.next();
+			String temp = varHash.put(Symbol.symbol(itMethodLocals.getParamName()), 
+													itMethodLocals.getParamType());
+			history.push(new Params(itMethodLocals.getParamName(), itMethodLocals.getParamType()));			
+			if(temp != null)
+				pastDecl.push(new Params(itMethodLocals.getParamName(), temp));
+		}
+	}
+	
+	public void endScope(){
+		while(!history.isEmpty()){
+			Params tempParams = history.pop();
+			varHash.remove(Symbol.symbol(tempParams.getParamName()));
+			for(Iterator<Params> it = pastDecl.iterator(); it.hasNext();){
+				Params itPastDecl = it.next();
+				if(tempParams.getParamName() == itPastDecl.getParamName())
+					varHash.put(Symbol.symbol(itPastDecl.getParamName()), itPastDecl.getParamType());
+			}
+		}
+	}
+	
+
+	
+	    
+    
+} 

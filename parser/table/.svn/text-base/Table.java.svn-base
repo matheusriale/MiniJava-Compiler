@@ -1,0 +1,9 @@
+package symbol;
+
+import java.util.Hashtable;
+
+public class Table {
+	
+	public static Hashtable<Symbol,String> varHash = new Hashtable<Symbol,String>();
+
+}

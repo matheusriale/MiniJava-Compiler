@@ -1,0 +1,26 @@
+package symbol;
+
+import java.io.*;
+import syntaxtree.*;
+import visitor.*;
+import generatedFiles.*;
+
+public class TypeCheck {
+	
+	private MiniJava mj;
+	private SymbolDepthFirstVisitor symbolVisitor;
+	private TypeDepthFirstVisitor typeVisitor;
+	
+	public TypeCheck (InputStream ins){
+		mj = new MiniJava(ins);
+		symbolVisitor = new SymbolDepthFirstVisitor();
+	}
+	
+	public void doTypeChecking(Program prog){				
+		symbolVisitor.visit(prog);
+		
+		typeVisitor = new TypeDepthFirstVisitor(symbolVisitor);
+		typeVisitor.visit(prog);
+	}
+
+}

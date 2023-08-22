@@ -1,0 +1,98 @@
+package symbol;
+import java.util.*;
+
+public class Class extends Table {
+	
+	private String name;
+	private List<Params> classAttributes;
+	private List<Method> classMethods;
+	private Stack<Params> history;
+	private boolean isExtended;
+	
+	public Class(String name, boolean isExtended, Class father){
+		super();
+		this.name = name; 
+		classAttributes = new ArrayList<Params>();
+		classMethods = new ArrayList<Method>();
+		history = new Stack<Params>();
+		this.isExtended = isExtended;
+		if(isExtended){
+			for(Iterator<Params> it = father.classAttributes.iterator(); it.hasNext();)
+				father.putClassAttributes(it.next());
+			for(Iterator<Method> it = father.classMethods.iterator(); it.hasNext();)
+				father.putClassMethods(it.next());
+			classAttributes = father.classAttributes;
+			classMethods = father.classMethods;
+		}
+		
+	}	
+	
+	public void putClassAttributes(Params classAttribute){		
+		boolean alreadyInList = false;
+		
+		for(Iterator<Params> it = classAttributes.iterator(); it.hasNext();){
+			Params itAttr = it.next();
+			if(itAttr.getParamName() == classAttribute.getParamName())
+				alreadyInList = true;
+		}
+		if(!alreadyInList)
+			classAttributes.add(classAttribute);		
+		else {
+			Error.errorOccurred();
+			System.out.printf("Classe já contem o atributo %s do tipo %s", 
+			           classAttribute.getParamName(), classAttribute.getParamType());
+		}
+	}
+	
+	public void putClassMethods(Method classMethod){		
+		boolean alreadyInList = false;
+		
+					
+		for(Iterator<Method> it = classMethods.iterator(); it.hasNext();){
+			Method itMethod = it.next();
+			if (itMethod.getAttr() == classMethod.getAttr() && 
+					itMethod.getMethodParams() == classMethod.getMethodParams()){
+				if(isExtended) classMethods.remove(itMethod);
+				alreadyInList = true;				
+			}
+		}
+		if(!alreadyInList)
+			classMethods.add(classMethod);
+		else{
+			Error.errorOccurred();
+			System.out.printf("Classe já contem o método %s do tipo %s com os mesmos parametros", 
+			           classMethod.getAttr().getParamName(), 
+			           classMethod.getAttr().getParamType());
+		}		
+	}	
+	
+	public String getName(){return name;}
+	
+	public List<Params> getClassAttributes(){return classAttributes;}	
+	
+	public List<Method> getClassMethods(){return classMethods;}
+	
+	public void beginScope(){
+		for(Iterator<Params> it = classAttributes.iterator();it.hasNext();){
+			Params itAttr = it.next();
+			varHash.put(Symbol.symbol(itAttr.getParamName()), 
+										itAttr.getParamType());
+			history.push(new Params(itAttr.getParamName(), itAttr.getParamType()));						
+		}
+		for(Iterator<Method> it = classMethods.iterator(); it.hasNext();){
+			Method itMethod = it.next();
+			varHash.put(Symbol.symbol(itMethod.getAttr().getParamName() + "meth" + itMethod.getAttr().getParamType()),
+	                                  itMethod.getAttr().getParamType());
+			history.push(new Params(itMethod.getAttr().getParamName() + "meth"+itMethod.getAttr().getParamType(),
+					                itMethod.getAttr().getParamType()));
+		}
+	}
+	
+	public void endScope(){
+		while(!history.isEmpty()){
+			Params tempParams = history.pop();
+			varHash.remove(Symbol.symbol(tempParams.getParamName()));
+		}
+	}
+
+}
